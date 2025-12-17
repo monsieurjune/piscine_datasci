@@ -1,5 +1,37 @@
 #!/usr/bin/env /bin/bash
 
+# CORRECT VALUE
+
+# MAXIMUN
+# oct 2022
+# product_id: 5900470
+# price: 307.60
+# user_id: 566280798
+
+# nov 2022
+# product_id: 5909246
+# price: 327.78
+# user_id: 579969854
+
+# dec 2022
+# product_id: 5917178
+# price: 327.78
+# user_id: 595414541
+
+# jan 2023
+# product_id: 5924514
+# price: 327.78
+# user_id: 608822072
+
+# ==================
+
+# SIZE
+# oct 4102283
+# nov 4635837
+# dec 3533286
+# jan 4264752
+# item 109579
+
 # Set variables
 env_file=.env
 
