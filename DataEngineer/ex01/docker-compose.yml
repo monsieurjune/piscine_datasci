@@ -1,0 +1,39 @@
+services:
+  psql:
+    container_name: psql
+    image: postgres:17.7-alpine3.22
+    restart: always
+    networks:
+      - mainnet
+    volumes:
+      - db:/var/lib/postgresql/data:rw
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4:9.10
+    restart: always
+    networks:
+      - mainnet
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin:rw
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "8080:80"
+    depends_on:
+      - psql
+
+networks:
+  mainnet:
+    driver: bridge
+
+volumes:
+  db:
+  pgadmin_data:
