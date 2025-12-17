@@ -1,37 +1,5 @@
 #!/usr/bin/env /bin/bash
 
-# CORRECT VALUE
-
-# MAXIMUN
-# oct 2022
-# product_id: 5900470
-# price: 307.60
-# user_id: 566280798
-
-# nov 2022
-# product_id: 5909246
-# price: 327.78
-# user_id: 579969854
-
-# dec 2022
-# product_id: 5917178
-# price: 327.78
-# user_id: 595414541
-
-# jan 2023
-# product_id: 5924514
-# price: 327.78
-# user_id: 608822072
-
-# ==================
-
-# SIZE
-# oct 4102283
-# nov 4635837
-# dec 3533286
-# jan 4264752
-# item 109579
-
 # Set variables
 env_file=.env
 
@@ -81,6 +49,28 @@ append_password() {
     append_env $env_file POSTGRES_PASSWORD $POSTGRES_PASSWORD
 }
 
+append_email() {
+    read -r -p "PGADMIN_DEFAULT_EMAIL: " PGADMIN_DEFAULT_EMAIL
+
+    append_env $env_file PGADMIN_DEFAULT_EMAIL $PGADMIN_DEFAULT_EMAIL
+}
+
+append_pgadmin_password() {
+    # Enforcing 8 characters password
+    while true; do
+        read -s -p "PGADMIN_DEFAULT_PASSWORD (At least 8 characters): " PGADMIN_DEFAULT_PASSWORD
+        echo ""
+
+        if [ ${#PGADMIN_DEFAULT_PASSWORD} -lt 8 ]; then
+            echo "❌ Password must be at least 8 characters long. Please try again."
+        else
+            break
+        fi
+    done
+
+    append_env $env_file PGADMIN_DEFAULT_PASSWORD $PGADMIN_DEFAULT_PASSWORD
+}
+
 # Exit on error
 set -e
 echo "Generating env..."
@@ -99,3 +89,6 @@ chmod 600 $env_file
 append_db
 append_username
 append_password
+
+append_email
+append_pgadmin_password
