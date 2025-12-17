@@ -1,0 +1,49 @@
+# Computer + IDE Stuff
+/**/.DS_Store
+/**/.vscode/
+/**/.idea/
+
+# Backup files
+/**/*.bak
+
+# secret
+/**/secrets/*
+/**/*.crt
+/**/*.key
+/**/*.pem
+/**/*.token
+
+# env
+/**/*.env*
+/**/env
+
+# Logs
+logs/*
+/**/*.log*
+
+# Nodejs
+/**/node_modules
+/**/dist
+/**/build
+/**/.tsbuildinfo
+/**/.eslintcache
+
+# Output
+/**/.output
+/**/.vercel
+/**/.netlify
+/**/.wrangler
+/**/.svelte-kit
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Database
+/**/data/*
+/**/db
+/**/*.sqlite
+/**/*.sqlite3
+/**/*.db
+/**/*.db3
+/**/*.s3db
