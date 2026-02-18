@@ -47,3 +47,6 @@ vite.config.ts.timestamp-*
 /**/*.db
 /**/*.db3
 /**/*.s3db
+
+# CSV
+/**/*.csv
