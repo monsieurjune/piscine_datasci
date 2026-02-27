@@ -21,6 +21,12 @@ input_with_default() {
     echo "$input"
 }
 
+append_host() {
+    HOST=$(input_with_default "HOST [default: localhost]: " "localhost")
+
+    append_env $env_file HOST $HOST
+}
+
 append_db() {
     POSTGRES_DB=$(input_with_default "POSTGRES_DB [default: piscineds]: " "piscineds")
 
@@ -71,6 +77,18 @@ append_pgadmin_password() {
     append_env $env_file PGADMIN_DEFAULT_PASSWORD $PGADMIN_DEFAULT_PASSWORD
 }
 
+append_customer_dir() {
+    read -r -p "CUSTOMER_DIR_PATH: " CUSTOMER_DIR_PATH
+
+    append_env $env_file CUSTOMER_DIR_PATH $CUSTOMER_DIR_PATH
+}
+
+append_item_dir() {
+    read -r -p "ITEMS_DIR_PATH: " ITEMS_DIR_PATH
+
+    append_env $env_file ITEMS_DIR_PATH $ITEMS_DIR_PATH
+}
+
 # Exit on error
 set -e
 echo "Generating env..."
@@ -86,9 +104,13 @@ touch $env_file
 chmod 600 $env_file
 
 # Append env to $env_file
+append_host
 append_db
 append_username
 append_password
 
 append_email
 append_pgadmin_password
+
+append_customer_dir
+append_item_dir
