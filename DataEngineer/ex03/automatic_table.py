@@ -1,14 +1,58 @@
 import psycopg2 as ps
-from os import listdir
+from os import listdir, path
 from getpass import getpass
+from typing import Dict, Callable
+
+sql_query = lambda table_name: \
+f"""
+COPY {table_name} 
+(event_time, event_type, product_id, price, user_id, user_session)
+FROM STDIN WITH (FORMAT csv, HEADER true);
+"""
+
+def get_env() -> Dict[str, str]:
+    dict: Dict[str, str] = {}
+
+    try:
+        if not path.isfile('.env'):
+            return dict
+
+        with open('.env', mode='r', newline='', encoding='utf-8') as file:
+            raw_lines = file.readlines()
+
+            for raw_line in raw_lines:
+                ret = raw_line.replace('\n', '').split('=', 2)
+                if ret.__len__() == 2:
+                    dict[ret[0]] = ret[1]
+
+        return dict
+    except OSError as _:
+        return {}
+
+def fill_env(env: Dict[str, str], key: str, fn: Callable[..., str]) -> None:
+    if env.get(key) is None:
+        env[key] = fn(f"{key}: ")
+
+def init_env() -> Dict[str, str]:
+    env = get_env()
+
+    fill_env(env, "CUSTOMER_DIR_PATH", input)
+    fill_env(env, "HOST", input)
+    fill_env(env, "POSTGRES_DB", input)
+    fill_env(env, "POSTGRES_USER", input)
+    fill_env(env, "POSTGRES_PASSWORD", getpass)
+
+    return env
 
 def main() -> None:
-    # Take Input
-    csv_customer_path = input("CUSTOMER_DIR_PATH: ")
-    hostname = input("HOST: ")
-    db_name = input("POSTGRES_DB: ")
-    user_name = input("POSTGRES_USER: ")
-    passwd = getpass(prompt="POSTGRES_PASSWORD: ")
+    env = init_env()
+
+    # Setup var
+    csv_customer_path: str = env["CUSTOMER_DIR_PATH"]
+    hostname: str = env["HOST"]
+    db_name: str = env["POSTGRES_DB"]
+    user_name: str = env["POSTGRES_USER"]
+    passwd: str = env["POSTGRES_PASSWORD"]
 
     try:
         # List thing in dir
@@ -35,19 +79,12 @@ def main() -> None:
                 # Read CSV File
                 with open(f"{csv_customer_path}/{file}", mode='r', newline='', encoding='utf-8') as file:
                     # Copy CSV content to psql via STDIN
-                    cur.copy_expert(
-                        f"""
-                        COPY {table_name} 
-                        (event_time, event_type, product_id, price, user_id, user_session)
-                        FROM STDIN WITH (FORMAT csv, HEADER true)
-                        """,
-                        file=file
-                    )
+                    cur.copy_expert(sql_query(table_name) ,file=file)
 
                     # Commit per table
                     conn.commit()
             except Exception as e:
-                print(f"Cursur Error: {e}")
+                print(f"Cursur Error [{file}]: {e}")
 
         # Close
         cur.close()
