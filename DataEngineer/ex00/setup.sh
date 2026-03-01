@@ -22,9 +22,9 @@ input_with_default() {
 }
 
 append_host() {
-    HOST=$(input_with_default "HOST [default: localhost]: " "localhost")
+    POSTGRES_HOSTNAME=$(input_with_default "POSTGRES_HOSTNAME [default: localhost]: " "localhost")
 
-    append_env $env_file HOST $HOST
+    append_env $env_file POSTGRES_HOSTNAME $POSTGRES_HOSTNAME
 }
 
 append_db() {

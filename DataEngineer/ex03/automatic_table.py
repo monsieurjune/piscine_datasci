@@ -5,8 +5,14 @@ from typing import Dict, Callable
 
 sql_query = lambda table_name: \
 f"""
-COPY {table_name} 
-(event_time, event_type, product_id, price, user_id, user_session)
+COPY {table_name} (
+    event_time, 
+    event_type, 
+    product_id, 
+    price, 
+    user_id, 
+    user_session
+)
 FROM STDIN WITH (FORMAT csv, HEADER true);
 """
 
@@ -37,7 +43,7 @@ def init_env() -> Dict[str, str]:
     env = get_env()
 
     fill_env(env, "CUSTOMER_DIR_PATH", input)
-    fill_env(env, "HOST", input)
+    fill_env(env, "POSTGRES_HOSTNAME", input)
     fill_env(env, "POSTGRES_DB", input)
     fill_env(env, "POSTGRES_USER", input)
     fill_env(env, "POSTGRES_PASSWORD", getpass)
@@ -49,7 +55,7 @@ def main() -> None:
 
     # Setup var
     csv_customer_path: str = env["CUSTOMER_DIR_PATH"]
-    hostname: str = env["HOST"]
+    hostname: str = env["POSTGRES_HOSTNAME"]
     db_name: str = env["POSTGRES_DB"]
     user_name: str = env["POSTGRES_USER"]
     passwd: str = env["POSTGRES_PASSWORD"]
