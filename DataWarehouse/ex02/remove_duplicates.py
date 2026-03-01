@@ -1,14 +1,15 @@
 import psycopg2 as ps
-from getpass import getpass
 from os import path
-from typing import Dict
+from getpass import getpass
+from typing import Dict, Callable
 
-TABLE_NAME = "customers"
+MAIN_TABLE_NAME = "customers"
 
-PL_SCRIPT = f"""
+pl_script = lambda table_name: \
+f"""
 DROP FUNCTION IF EXISTS remove_backend_mess();
 
-ALTER TABLE {TABLE_NAME} ADD COLUMN id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY;
+ALTER TABLE {table_name} ADD COLUMN id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY;
 
 CREATE FUNCTION remove_backend_mess()
 RETURNS VOID
@@ -21,7 +22,7 @@ DECLARE
 BEGIN
 	FOR tran_i IN
 		SELECT *, LAG(event_time) OVER u_trans_w AS prev_time
-		FROM {TABLE_NAME}
+		FROM {table_name}
 		WINDOW u_trans_w AS (
 			PARTITION BY user_id, user_session, event_type, product_id
 			ORDER BY event_time
@@ -38,59 +39,56 @@ BEGIN
 		END IF;
 	END LOOP;
 
-	DELETE FROM {TABLE_NAME} WHERE id = ANY(duplicated_id_set);
+	DELETE FROM {table_name} WHERE id = ANY(duplicated_id_set);
 END;
 $$;
 
 SELECT remove_backend_mess();
 
-ALTER TABLE {TABLE_NAME} DROP COLUMN id;
+ALTER TABLE {table_name} DROP COLUMN id;
 """
 
 def get_env() -> Dict[str, str]:
     dict: Dict[str, str] = {}
 
-    with open('.env', mode='r', newline='', encoding='utf-8') as file:
-        raw_lines = file.readlines()
+    try:
+        if not path.isfile('.env'):
+            return dict
 
-        for raw_line in raw_lines:
-            ret = raw_line.replace('\n', '').split('=', 2)
-            if ret.__len__() == 2:
-                dict[ret[0]] = ret[1]
+        with open('.env', mode='r', newline='', encoding='utf-8') as file:
+            raw_lines = file.readlines()
 
-    return dict
+            for raw_line in raw_lines:
+                ret = raw_line.replace('\n', '').split('=', 2)
+                if ret.__len__() == 2:
+                    dict[ret[0]] = ret[1]
+
+        return dict
+    except OSError as _:
+        return {}
+
+def fill_env(env: Dict[str, str], key: str, fn: Callable[..., str]) -> None:
+    if env.get(key) is None:
+        env[key] = fn(f"{key}: ")
+
+def init_env() -> Dict[str, str]:
+    env = get_env()
+
+    fill_env(env, "POSTGRES_HOSTNAME", input)
+    fill_env(env, "POSTGRES_DB", input)
+    fill_env(env, "POSTGRES_USER", input)
+    fill_env(env, "POSTGRES_PASSWORD", getpass)
+
+    return env
 
 def main() -> None:
-    # Check .env file
-    is_using_env = False
-    try:
-        is_using_env = path.isfile('.env')
-    except Exception as _:
-        pass
+    env = init_env()
 
     # Setup var
-    hostname: str | None = None
-    db_name: str | None = None
-    user_name: str | None = None
-    passwd: str | None = None
-
-    if is_using_env:
-        # Read .env
-        env = get_env()
-        hostname = env.get('POSTGRES_HOSTNAME')
-        db_name = env.get('POSTGRES_DB')
-        user_name = env.get('POSTGRES_USER')
-        passwd = env.get('POSTGRES_PASSWORD')
-
-    # Take Input, in case that certain var is None
-    if hostname is None:
-        hostname = input("POSTGRES_HOSTNAME: ")
-    if db_name is None:
-        db_name = input("POSTGRES_DB: ")
-    if user_name is None:
-        user_name = input("POSTGRES_USER: ")
-    if passwd is None:
-        passwd = getpass(prompt="POSTGRES_PASSWORD: ")
+    hostname: str = env["POSTGRES_HOSTNAME"]
+    db_name: str = env["POSTGRES_DB"]
+    user_name: str = env["POSTGRES_USER"]
+    passwd: str = env["POSTGRES_PASSWORD"]
 
     try:
         # Connect to server
@@ -104,7 +102,7 @@ def main() -> None:
         cur = conn.cursor()
 
         # Run PL Script
-        cur.execute(PL_SCRIPT)
+        cur.execute(pl_script(MAIN_TABLE_NAME))
 
         # Commit
         conn.commit()

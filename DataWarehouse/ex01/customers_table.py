@@ -1,52 +1,74 @@
 import psycopg2 as ps
-from getpass import getpass
 from os import path
-from typing import Dict
+from getpass import getpass
+from typing import Dict, Callable
+
+MAIN_TABLE_NAME = "customers"
+
+sql_listing_query = lambda: \
+f"""
+SELECT table_name FROM information_schema.tables 
+WHERE table_schema IN ('public') AND table_name LIKE 'data\\_202_\\____' ESCAPE '\\';
+"""
+
+sql_creating_query = lambda main_table_name: \
+f"""
+CREATE TABLE IF NOT EXISTS {main_table_name} (
+    event_time TIMESTAMPTZ, 
+    event_type TEXT, 
+    product_id INTEGER, 
+    price NUMERIC(8, 2), 
+    user_id BIGINT, 
+    user_session UUID
+);
+"""
+
+sql_append_query = lambda main_table_name, sub_table_name: \
+f"""
+INSERT INTO {main_table_name} SELECT * FROM {sub_table_name};
+"""
 
 def get_env() -> Dict[str, str]:
     dict: Dict[str, str] = {}
 
-    with open('.env', mode='r', newline='', encoding='utf-8') as file:
-        raw_lines = file.readlines()
+    try:
+        if not path.isfile('.env'):
+            return dict
 
-        for raw_line in raw_lines:
-            ret = raw_line.replace('\n', '').split('=', 2)
-            if ret.__len__() == 2:
-                dict[ret[0]] = ret[1]
+        with open('.env', mode='r', newline='', encoding='utf-8') as file:
+            raw_lines = file.readlines()
 
-    return dict
+            for raw_line in raw_lines:
+                ret = raw_line.replace('\n', '').split('=', 2)
+                if ret.__len__() == 2:
+                    dict[ret[0]] = ret[1]
+
+        return dict
+    except OSError as _:
+        return {}
+
+def fill_env(env: Dict[str, str], key: str, fn: Callable[..., str]) -> None:
+    if env.get(key) is None:
+        env[key] = fn(f"{key}: ")
+
+def init_env() -> Dict[str, str]:
+    env = get_env()
+
+    fill_env(env, "POSTGRES_HOSTNAME", input)
+    fill_env(env, "POSTGRES_DB", input)
+    fill_env(env, "POSTGRES_USER", input)
+    fill_env(env, "POSTGRES_PASSWORD", getpass)
+
+    return env
 
 def main() -> None:
-    # Check .env file
-    is_using_env = False
-    try:
-        is_using_env = path.isfile('.env')
-    except Exception as _:
-        pass
+    env = init_env()
 
     # Setup var
-    hostname: str | None = None
-    db_name: str | None = None
-    user_name: str | None = None
-    passwd: str | None = None
-
-    if is_using_env:
-        # Read .env
-        env = get_env()
-        hostname = env.get('POSTGRES_HOSTNAME')
-        db_name = env.get('POSTGRES_DB')
-        user_name = env.get('POSTGRES_USER')
-        passwd = env.get('POSTGRES_PASSWORD')
-
-    # Take Input, in case that certain var is None
-    if hostname is None:
-        hostname = input("POSTGRES_HOSTNAME: ")
-    if db_name is None:
-        db_name = input("POSTGRES_DB: ")
-    if user_name is None:
-        user_name = input("POSTGRES_USER: ")
-    if passwd is None:
-        passwd = getpass(prompt="POSTGRES_PASSWORD: ")
+    hostname: str = env["POSTGRES_HOSTNAME"]
+    db_name: str = env["POSTGRES_DB"]
+    user_name: str = env["POSTGRES_USER"]
+    passwd: str = env["POSTGRES_PASSWORD"]
 
     try:
         # Connect to server
@@ -60,20 +82,16 @@ def main() -> None:
         cur = conn.cursor()
 
         # Run Listing Query
-        query = f"SELECT table_name FROM information_schema.tables WHERE table_schema IN ('public') AND table_name LIKE 'data\\_202_\\____' ESCAPE '\\';"
-        cur.execute(query)
+        cur.execute(sql_listing_query())
         customer_tables = cur.fetchall()
 
         # Run Creating Table Query
-        main_table_name = "customers"
-        query = f"CREATE TABLE IF NOT EXISTS {main_table_name} ( event_time TIMESTAMPTZ, event_type TEXT, product_id INTEGER, price NUMERIC(8, 2), user_id BIGINT, user_session UUID );"
-        cur.execute(query)
+        cur.execute(sql_creating_query(MAIN_TABLE_NAME))
 
         # Run Append Query
         # Note that this script doesn't prevent redundant copy
         for table, in customer_tables:
-            query = f"INSERT INTO {main_table_name} SELECT * FROM {table}"
-            cur.execute(query)
+            cur.execute(sql_append_query(MAIN_TABLE_NAME, table))
 
         # Commit
         conn.commit()
