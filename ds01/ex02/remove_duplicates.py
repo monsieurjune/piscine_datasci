@@ -18,7 +18,6 @@ AS $$
 DECLARE
 	tran_i RECORD;
 	duplicated_id_set BIGINT[];
-	curr_real_time TIMESTAMPTZ := TIMESTAMPTZ '1970-01-01 00:00:00+00';
 BEGIN
 	FOR tran_i IN
 		SELECT *, LAG(event_time) OVER u_trans_w AS prev_time
@@ -30,11 +29,9 @@ BEGIN
 	LOOP
 		IF tran_i.prev_time IS NULL
 		THEN
-			curr_real_time := tran_i.event_time;
-		ELSIF tran_i.event_time > curr_real_time + INTERVAL '1 second'
+			-- Do nothing
+		ELSIF tran_i.event_time <= tran_i.prev_time + INTERVAL '1 second'
 		THEN
-			curr_real_time := tran_i.event_time;
-		ELSE
 			duplicated_id_set := array_append(duplicated_id_set, tran_i.id);
 		END IF;
 	END LOOP;
